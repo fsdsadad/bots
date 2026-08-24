@@ -63,7 +63,7 @@ TAG_SPAM_ACTIVE: bool = False
 TAG_SPAM_TASK: Optional[asyncio.Task] = None
 TAG_SPAM_DELAY: float = 5.0
 TAG_SPAM_CHAT_ID: Optional[int] = None
-TAG_SYMBOL: str = "🪽"
+TAG_SYMBOL: str = "->"
 
 # Multi-bot variables
 clients: List[TelegramClient] = []
@@ -160,7 +160,7 @@ async def tag_spam_all_bots_loop(chat_id: int):
 async def forward_spam_all_bots():
     """Forward spam with ALL bots."""
     global FORWARD_SPAM_ACTIVE
-    print("[FWD SPAM] Started with ALL bots")
+    print("[FWD SPAM] Started ")
     ensure_forward_files()
     while FORWARD_SPAM_ACTIVE:
         try:
@@ -253,11 +253,11 @@ async def send_loading_animation(event):
         " [██████████] 100%",
         " LOADING COMPLETE"
     ]
-    loading_msg = await event.reply(" **Loading...**\n" + loading_steps[0])
+    loading_msg = await event.reply(" Loading...\n" + loading_steps[0])
     for i in range(1, len(loading_steps)):
         await asyncio.sleep(0.3)
         try:
-            await loading_msg.edit(f" **Loading...**\n{loading_steps[i]}")
+            await loading_msg.edit(f" Loading...\n{loading_steps[i]}")
         except:
             break
     await asyncio.sleep(0.3)
@@ -361,7 +361,7 @@ async def handle_all_messages(event):
             await asyncio.sleep(0.5)
             try:
                 await event.reply(reply_text)
-                print(f"[BOT]  Enemy reply sent to {user_id}")
+                print(f"[BOT] Enemy reply sent to {user_id}")
             except Exception as e:
                 print(f"[ERROR] Enemy reply failed: {e}")
             return
@@ -411,23 +411,23 @@ async def handle_all_messages(event):
     else:
         location = "UNKNOWN"
     
-    print(f"[BOT]  Admin {user_id} in {location}: {text[:50]}")
+    print(f"[BOT] Admin {user_id} in {location}: {text[:50]}")
     
-    # ====================== HELP COMMANDS ======================
+    # HELP COMMANDS
     if text == "help" or text == "راهنما":
         await send_loading_animation(event)
         help_text = """
-```> • `spam` – Start spam (ALL 5 bots)
-> • `spamoff` – Stop spam (ALL 5 bots)
-> • `setfosh <text>` – Change spam text
-> • `speed <1-60>` – Set speed
-> • `id` – Get chat ID
-> • `setid <chat_id>` – Set target
-> • `join <link>` – Join link (ALL 5 bots)
-> • `ping` – Check bot ping
-> • `status` – Show status
-> • `help2`
-> •Development by @DevilWillCryBitch ````
+> spam - Start spam 
+> spamoff - Stop spam 
+> setfosh <text> - 
+> speed <1-60> - Set speed
+> id - Get chat ID
+> setid <chat_id> - Set target
+> join <link> - Join link 
+> ping - Check bot ping
+> status - Show status
+> help2
+> Development by @DevilWillCryBitch
 """
         try:
             await client_instance.send_file(
@@ -447,23 +447,23 @@ async def handle_all_messages(event):
     if text == "help2":
         await send_loading_animation(event)
         help_text = """
-```• `sudo su <user id>` – Add admin 
-• `kiladmin <user id>` – Remove admin
-• `copy @user` – Clone profile
-• `back` – Restore original profile
-• `on` – Start number fight (ALL 5 bots)
-• `off` – Stop number fight (ALL 5 bots)
-• `setenemy` – Mark user as enemy (reply to message)
-• `enemyoff` – Remove user from enemy list
-• `listfosh` – Show the fosh list
-• `addfosh` – Add fosh (reply to message)
-• `removefosh <index>` – Remove fosh
-• `bitch <user id>` – Set users to tag
-• `set <symbol>` – Set tag symbol
-• `time <seconds>` – Set delay (1-60s)
-• `start` – Start tag spam (ALL 5 bots)
-• `stop` – Stop tag spam (ALL 5 bots)
-> •Development by @DevilWillCryBitch ````
+> sudo su <user id> - Add admin 
+> kiladmin <user id> - Remove admin
+> copy @user - Clone profile
+> back - Restore original profile
+> on - Start number fight 
+> off - Stop number fight 
+> setenemy - Mark user as enemy 
+> enemyoff - Remove user from enemy list
+> listfosh - Show the fosh list
+> addfosh - Add fosh (reply to message)
+> removefosh <index> - Remove fosh
+> bitch <user id> - Set users to tag
+> set <symbol> - Set tag symbol
+> time <seconds> - Set delay (1-60s)
+> start - spam with your chose id  
+> stop - Stop (start)
+> Development by @DevilWillCryBitch
 """
         try:
             await client_instance.send_file(
@@ -480,14 +480,14 @@ async def handle_all_messages(event):
                 print(f"[ERROR] Help2 text fallback failed: {fallback_error}")
         return
 
-    # ====================== ON/OFF (ALL BOTS) ======================
+    # ON/OFF (ALL BOTS)
     if text == "on":
         if not ON_OFF_ACTIVE:
             ON_OFF_ACTIVE = True
             if ON_OFF_TASK and not ON_OFF_TASK.done():
                 ON_OFF_TASK.cancel()
             ON_OFF_TASK = asyncio.create_task(on_off_loop_all_bots(event.chat_id))
-            await event.reply(f"✅ ON started with ALL {len(clients)} bots!")
+            await event.reply(f"ON start {len(clients)} ")
         return
 
     if text == "off":
@@ -495,36 +495,36 @@ async def handle_all_messages(event):
             ON_OFF_ACTIVE = False
             if ON_OFF_TASK and not ON_OFF_TASK.done():
                 ON_OFF_TASK.cancel()
-            await event.reply("✅ OFF stopped!")
+            await event.reply("OFF stopped")
         return
 
-    # ====================== SPEED ======================
+    # SPEED
     if text.startswith("speed "):
         try:
             new_speed = float(text[6:].strip())
             if 1 <= new_speed <= 60:
                 SPAM_SPEED = new_speed
-                print(f"[BOT] Spam speed changed to {SPAM_SPEED}s")
+                print(f" Spam speed changed to {SPAM_SPEED}s")
                 await event.reply(f"Speed set to {SPAM_SPEED} seconds")
         except ValueError:
             pass
         return  
 
-    # ====================== SPAM (ALL BOTS) ======================
+    # SPAM (ALL BOTS)
     if text == "spam":
         if not SPAM_TARGET:
-            await event.reply("No target chat set. Use `setid` first.")
+            await event.reply("No target chat set. Use setid first.")
             return
         if SPAM_ACTIVE:
-            await event.reply("Spam is already running! Use `spamoff` to stop.")
+            await event.reply("Spam is already running. Use spamoff to stop.")
             return
         
         SPAM_ACTIVE = True
         await event.reply(
-            f"✅ SPAM started with ALL {len(clients)} bots!\n"
-            f"Target: `{SPAM_TARGET}`\n"
-            f"Text: `{SPAM_TEXT}`\n"
-            f"Speed: `{SPAM_SPEED} seconds`"
+            f" {len(clients)} \n"
+            f" {SPAM_TARGET}\n"
+            f" {SPAM_TEXT}\n"
+            f" {SPAM_SPEED} seconds"
         )
         
         if SPAM_TASK and not SPAM_TASK.done():
@@ -537,43 +537,43 @@ async def handle_all_messages(event):
             SPAM_ACTIVE = False
             if SPAM_TASK and not SPAM_TASK.done():
                 SPAM_TASK.cancel()
-            await event.reply("SPAM STOPPED on ALL bots!")
+            await event.reply("SPAM STOP")
         else:
             await event.reply("NOT ACTIVE")
         return
     
-    # ====================== SETFOSH ======================
+    # SETFOSH
     if text.startswith("setfosh "):
         SPAM_TEXT = text[8:].strip()
-        await event.reply(f"Spam text set to:\n`{SPAM_TEXT}`")
+        await event.reply(f"Spam text set to: {SPAM_TEXT}")
         return
     
-    # ====================== ID ======================
+    # ID
     if text == "id":
         chat_id = event.chat_id
         chat_type = "Private" if event.is_private else "Group" if event.is_group else "Channel"
-        await event.reply(f"ID `{chat_id}`\nType: {chat_type}")
+        await event.reply(f"ID {chat_id}\nType: {chat_type}")
         return
     
-    # ====================== SETID ======================
+    # SETID
     if text.startswith("setid "):
         try:
             SPAM_TARGET = int(text[6:].strip())
-            await event.reply(f"Target set to `{SPAM_TARGET}`")
+            await event.reply(f"Target set to {SPAM_TARGET}")
             try:
                 with open(TARGET_ID_FILE, "w", encoding="utf-8") as f:
                     f.write(str(SPAM_TARGET))
             except Exception as e:
                 print(f"[ERROR] Could not save target ID file: {e}")
         except ValueError:
-            await event.reply("Invalid chat ID! Must be a number.")
+            await event.reply("Invalid chat ID. Must be a number.")
         return
 
-    # ====================== SETFWD ======================
+    # SETFWD
     if text.startswith("setfwd "):
         link = text[7:].strip()
         if not link:
-            await event.reply("Usage: `setfwd <message_link>`")
+            await event.reply("Usage: setfwd <message_link>")
             return
         try:
             cleaned = link.replace("https://", "").replace("http://", "").replace("t.me/", "").replace("telegram.me/", "")
@@ -591,12 +591,12 @@ async def handle_all_messages(event):
                 f.write(channel)
             with open(FWD_SOURCE_MSG_ID_FILE, "w", encoding="utf-8") as f:
                 f.write(str(msg_id))
-            await event.reply(f"Source set!\nChannel: `{channel}`\nMessage ID: `{msg_id}`")
+            await event.reply(f"Source set\nChannel: {channel}\nMessage ID: {msg_id}")
         except Exception as e:
             await event.reply(f"Failed to parse link: {e}")
         return
 
-    # ====================== SETFWD_DELAY ======================
+    # SETFWD_DELAY
     if text.startswith("setfwd_delay "):
         try:
             parts = text.split()
@@ -612,10 +612,10 @@ async def handle_all_messages(event):
                 f.write(str(max_d))
             await event.reply(f"Delay: {min_d}-{max_d} seconds")
         except Exception:
-            await event.reply("Usage: `setfwd_delay <min> <max>`")
+            await event.reply("Usage: setfwd_delay <min> <max>")
         return
 
-    # ====================== SETFWD_TEXT ======================
+    # SETFWD_TEXT
     if text.startswith("setfwd_text "):
         extra_text = text[12:].strip()
         with open(FWD_EXTRA_TEXT_FILE, "w", encoding="utf-8") as f:
@@ -623,18 +623,18 @@ async def handle_all_messages(event):
         await event.reply("Extra text set")
         return
 
-    # ====================== SETFWD_POS ======================
+    # SETFWD_POS
     if text.startswith("setfwd_pos "):
         pos = text[11:].strip().lower()
         if pos not in ["before", "after"]:
-            await event.reply("Usage: `setfwd_pos before` or `setfwd_pos after`")
+            await event.reply("Usage: setfwd_pos before or setfwd_pos after")
             return
         with open(FWD_EXTRA_POSITION_FILE, "w", encoding="utf-8") as f:
             f.write(pos)
         await event.reply(f"Position: {pos}")
         return
 
-    # ====================== FSPAM (ALL BOTS) ======================
+    # FSPAM (ALL BOTS)
     if text == "fspam_on":
         if FORWARD_SPAM_ACTIVE:
             await event.reply("Forward spam is already running.")
@@ -643,7 +643,7 @@ async def handle_all_messages(event):
         if FORWARD_SPAM_TASK and not FORWARD_SPAM_TASK.done():
             FORWARD_SPAM_TASK.cancel()
         FORWARD_SPAM_TASK = asyncio.create_task(forward_spam_all_bots())
-        await event.reply(f"✅ FWD SPAM RUNNING with ALL {len(clients)} bots!")
+        await event.reply(f"FWD SPAM RUNNING with ALL {len(clients)} bots")
         return
 
     if text == "fspam_off":
@@ -651,12 +651,12 @@ async def handle_all_messages(event):
             FORWARD_SPAM_ACTIVE = False
             if FORWARD_SPAM_TASK and not FORWARD_SPAM_TASK.done():
                 FORWARD_SPAM_TASK.cancel()
-            await event.reply("FWD SPAM STOPPED!")
+            await event.reply("FWD SPAM STOPPED")
         else:
             await event.reply("Forward spam is not running.")
         return
 
-    # ====================== SHOWFWD ======================
+    # SHOWFWD
     if text == "showfwd":
         source = read_forward_file(FWD_SOURCE_CHANNEL_FILE)
         msg_id = read_forward_file(FWD_SOURCE_MSG_ID_FILE, "0")
@@ -664,14 +664,14 @@ async def handle_all_messages(event):
         max_delay = read_forward_file(FWD_DELAY_MAX_FILE, "10")
         target = SPAM_TARGET or int(read_forward_file(TARGET_ID_FILE, "1") or "1")
         status = "RUNNING" if FORWARD_SPAM_ACTIVE else "STOPPED"
-        await event.reply(f"**Forward Config - {status}**\n• TARGET: `{target}`\n• SOURCE: `{source}/{msg_id}`\n• DELAY: `{min_delay}-{max_delay}` seconds")
+        await event.reply(f"Forward Config - {status}\nTARGET: {target}\nSOURCE: {source}/{msg_id}\nDELAY: {min_delay}-{max_delay} seconds")
         return
 
-    # ====================== JOIN (ALL BOTS) ======================
+    # JOIN (ALL BOTS)
     if text.startswith("join "):
         invite_input = raw_text[5:].strip()
         if not invite_input:
-            await event.reply("Usage: `join <invite_link>` or `join @channelname`")
+            await event.reply("Usage: join <invite_link> or join @channelname")
             return
 
         invite_input = invite_input.strip()
@@ -681,7 +681,6 @@ async def handle_all_messages(event):
             return
 
         try:
-            # First try with master client to get entity
             entity = None
             try:
                 entity = await MASTER_CLIENT.get_entity(target if not target.startswith("@") else target[1:])
@@ -692,7 +691,6 @@ async def handle_all_messages(event):
                 await event.reply("Could not find the channel/group.")
                 return
 
-            # Join with ALL bots
             joined_count = 0
             for i, client in enumerate(clients):
                 try:
@@ -706,15 +704,15 @@ async def handle_all_messages(event):
                 except Exception as e:
                     print(f"[JOIN] Bot {i} error: {e}")
 
-            await event.reply(f"✅ {joined_count}/{len(clients)} bots joined successfully!")
+            await event.reply(f"{joined_count}/{len(clients)} bots joined successfully")
         except Exception as e:
             await event.reply(f"Failed to join: {e}")
         return
 
-    # ====================== ADDFOSH ======================
+    # ADDFOSH
     if text == "addfosh":
         if not event.is_reply:
-            await event.reply("Reply to a message and type `addfosh`")
+            await event.reply("Reply to a message and type addfosh")
             return
 
         replied_msg = await event.get_reply_message()
@@ -726,7 +724,7 @@ async def handle_all_messages(event):
         save_fosh_file()
         await event.reply(
             f"Fosh added (Index #{len(FOSHLIST)-1})\n"
-            f"Preview: `{replied_msg.text[:50]}...`"
+            f"Preview: {replied_msg.text[:50]}..."
         )
         return
 
@@ -738,9 +736,9 @@ try:
         FOSHLIST: List[str] = [line.strip() for line in f if line.strip()]
 except FileNotFoundError:
     FOSHLIST: List[str] = [
-        "بیا پایین 🗿",
-        "کصخل 🐒",
-        "برو گمشو 👋"
+        "بیا پایین",
+        "کصخل",
+        "برو گمشو"
     ]
     print("fosh.txt not found. Using default fosh list.")
 
@@ -750,22 +748,22 @@ async def _commands_handler(event, text, client):
     global TAG_TARGETS, TAG_SPAM_ACTIVE, TAG_SPAM_TASK, TAG_SPAM_DELAY, TAG_SPAM_CHAT_ID, TAG_SYMBOL
     user_id = event.sender_id
 
-    # ====================== LISTFOSH ======================
+    # LISTFOSH
     if text == "listfosh":
         if not FOSHLIST:
-            await event.reply("Foshlist is empty. Use `addfosh` to fill it.")
+            await event.reply("Foshlist is empty. Use addfosh to fill it.")
             return
         lines = []
         for i, item in enumerate(FOSHLIST):
             snippet = item.replace("\n", " ")[:60]
-            lines.append(f"`{i}`: {snippet}...")
-        msg = "**FOSHLIST** (index to use with `removefosh`):\n" + "\n".join(lines[:20])
+            lines.append(f"{i}: {snippet}...")
+        msg = "FOSHLIST (index to use with removefosh):\n" + "\n".join(lines[:20])
         if len(lines) > 20:
             msg += f"\n... and {len(lines)-20} more."
         await event.reply(msg)
         return
 
-    # ====================== REMOVEFOSH ======================
+    # REMOVEFOSH
     if text.startswith("removefosh "):
         try:
             idx = int(text[11:].strip())
@@ -774,12 +772,12 @@ async def _commands_handler(event, text, client):
                 return
             removed = FOSHLIST.pop(idx)
             save_fosh_file()
-            await event.reply(f"Removed fosh {idx}:\n`{removed[:50]}...`")
+            await event.reply(f"Removed fosh {idx}:\n{removed[:50]}...")
         except ValueError:
             await event.reply("Invalid index. Must be a number.")
         return
 
-    # ====================== SETENEMY ======================
+    # SETENEMY
     if text == "setenemy":
         if not event.is_reply:
             await event.reply("Reply to a message to mark as enemy.")
@@ -795,11 +793,11 @@ async def _commands_handler(event, text, client):
         ENEMY_ACTIVE = True
         await event.reply(
             f"Enemy set: @{target_user.username or target_user.first_name or 'Unknown'}\n"
-            f"ID: `{ENEMY_TARGET}`"
+            f"ID: {ENEMY_TARGET}"
         )
         return
 
-    # ====================== ENEMYOFF ======================
+    # ENEMYOFF
     if text == "enemyoff":
         if ENEMY_ACTIVE:
             ENEMY_ACTIVE = False
@@ -808,23 +806,23 @@ async def _commands_handler(event, text, client):
             await event.reply("Enemy mode is already off.")
         return
 
-    # ====================== SETREPLY ======================
+    # SETREPLY
     if text.startswith("setreply "):
         mode = text[9:].strip().lower()
         if mode not in ["on", "off"]:
-            await event.reply("Usage: `setreply on` or `setreply off`")
+            await event.reply("Usage: setreply on or setreply off")
             return
         REPLY_TO_ENEMY = mode == "on"
         await event.reply(f"Auto-reply set to: {REPLY_TO_ENEMY}")
         return
     
-    # ====================== COPY ======================
+    # COPY
     if text.startswith("copy "):
         target_identifier = text[6:].strip()
         if target_identifier.startswith("@"):
             target_identifier = target_identifier[1:]
         
-        await event.reply(f"Searching for user: `{target_identifier}`...")
+        await event.reply(f"Searching for user: {target_identifier}...")
         
         try:
             try:
@@ -859,7 +857,7 @@ async def _commands_handler(event, text, client):
                 except:
                     pass
             
-            await event.reply(f"Cloning `{target_user.first_name or 'Unknown'}`...")
+            await event.reply(f"Cloning {target_user.first_name or 'Unknown'}...")
             
             try:
                 photos = await client.get_profile_photos(target_user, limit=1)
@@ -870,7 +868,7 @@ async def _commands_handler(event, text, client):
                         await client(UploadProfilePhotoRequest(
                             file=await client.upload_file(photo_path)
                         ))
-                        await event.reply("Profile picture cloned successfully!")
+                        await event.reply("Profile picture cloned successfully")
                         try:
                             os.remove(photo_path)
                         except:
@@ -886,17 +884,17 @@ async def _commands_handler(event, text, client):
                     first_name=new_first_name,
                     last_name=new_last_name
                 ))
-                await event.reply(f"Name cloned: `{new_first_name} {new_last_name}`".strip())
+                await event.reply(f"Name cloned: {new_first_name} {new_last_name}".strip())
             except Exception as e:
                 await event.reply(f"Failed to set name: {str(e)[:100]}")
             
-            await event.reply(f"✅ CLONE COMPLETE!\nID: `{target_user.id}`")
+            await event.reply(f"CLONE COMPLETE\nID: {target_user.id}")
             
         except Exception as e:
             await event.reply(f"Clone failed: {str(e)[:200]}")
         return
     
-    # ====================== BACK ======================
+    # BACK
     if text == "back":
         try:
             photos = await client.get_profile_photos(await client.get_me(), limit=1)
@@ -923,17 +921,17 @@ async def _commands_handler(event, text, client):
                     last_name=""
                 ))
             
-            await event.reply("Back to original!")
+            await event.reply("back")
         except Exception as e:
-            await event.reply(f"Failed to restore: {str(e)[:100]}")
+            await event.reply(f"faild{str(e)[:100]}")
         return
 
-    # ====================== BITCH (set tag targets) ======================
+    # BITCH (set tag targets)
     if text.startswith("bitch"):
         try:
             parts = text.split()
             if len(parts) < 2:
-                await event.reply("Provide at least one User ID.\nUsage: `bitch user_id1 user_id2 ...`")
+                await event.reply("Provide at least one User ID.\nUsage: bitch user_id1 user_id2 ...")
                 return
             
             user_ids = []
@@ -955,35 +953,35 @@ async def _commands_handler(event, text, client):
                 return
             
             TAG_TARGETS = user_ids
-            await event.reply(f"✅ {len(TAG_TARGETS)} tag targets set!\nIDs: `{'`, `'.join(map(str, TAG_TARGETS))}`")
+            await event.reply(f"{len(TAG_TARGETS)} \nIDs: {'`, `'.join(map(str, TAG_TARGETS))}")
             
         except Exception as e:
             await event.reply(f"Error: {str(e)}")
         return
 
-    # ====================== TIME (set tag delay) ======================
+    # TIME (set tag delay)
     if text.startswith("time "):
         try:
             delay = float(text[5:].strip())
             if 1 <= delay <= 60:
                 TAG_SPAM_DELAY = delay
-                await event.reply(f"Tag delay set to `{TAG_SPAM_DELAY}` seconds.")
+                await event.reply(f"{TAG_SPAM_DELAY} seconds.")
             else:
                 await event.reply("Delay must be between 1 and 60 seconds.")
         except ValueError:
-            await event.reply("Invalid number. Use `time <seconds>` (1-60).")
+            await event.reply("Invalid number. Use time <seconds> (1-60).")
         return
 
-    # ====================== START (tag spam with ALL bots) ======================
+    # START (tag spam with ALL bots)
     if text == "start":
         if TAG_SPAM_ACTIVE:
-            await event.reply("Tag spam is already running! Use `stop` first.")
+            await event.reply("Tag spam is already running. Use stop first")
             return
         if not FOSHLIST:
-            await event.reply("No fosh messages available. Use `addfosh` first.")
+            await event.reply("No fosh messages available. Use addfosh first")
             return
         if not TAG_TARGETS:
-            await event.reply("No tag targets set. Use `bitch <ids>` first.")
+            await event.reply("No tag targets set. Use bitch <ids> first")
             return
         
         TAG_SPAM_CHAT_ID = event.chat_id
@@ -992,15 +990,15 @@ async def _commands_handler(event, text, client):
             TAG_SPAM_TASK.cancel()
         TAG_SPAM_TASK = asyncio.create_task(tag_spam_all_bots_loop(TAG_SPAM_CHAT_ID))
         await event.reply(
-            f"✅ **Tag spam started with ALL {len(clients)} bots!**\n"
-            f"📝 Targets: {len(TAG_TARGETS)} user(s)\n"
-            f"⏱️ Delay: {TAG_SPAM_DELAY}s\n"
-            f"📂 Fosh count: {len(FOSHLIST)}\n"
-            f"🔣 Symbol: `{TAG_SYMBOL}`"
+            f"Tag spam started with ALL {len(clients)} bots\n"
+            f"Targets: {len(TAG_TARGETS)} user(s)\n"
+            f"Delay: {TAG_SPAM_DELAY}s\n"
+            f"Fosh count: {len(FOSHLIST)}\n"
+            f"Symbol: {TAG_SYMBOL}"
         )
         return
 
-    # ====================== STOP (tag spam) ======================
+    # STOP (tag spam)
     if text == "stop":
         if not TAG_SPAM_ACTIVE:
             await event.reply("Tag spam is not running.")
@@ -1008,51 +1006,51 @@ async def _commands_handler(event, text, client):
         TAG_SPAM_ACTIVE = False
         if TAG_SPAM_TASK and not TAG_SPAM_TASK.done():
             TAG_SPAM_TASK.cancel()
-        await event.reply("🛑 Tag spam stopped on ALL bots!")
+        await event.reply("ok ")
         return
 
-    # ====================== SET (symbol) ======================
+    # SET (symbol)
     if text.startswith("set"):
         symbol = text[10:].strip()
         if not symbol:
-            await event.reply("Please provide a symbol.\nUsage: `set <symbol>`")
+            await event.reply("Please provide a symbol.\nUsage: set <symbol>")
             return
         TAG_SYMBOL = symbol
-        await event.reply(f"Tag symbol set to: `{TAG_SYMBOL}`")
+        await event.reply(f"Tag symbol set to: {TAG_SYMBOL}")
         return
 
-    # ====================== PING ======================
+    # PING
     if text == "bot":
         await event.reply("O N L I N E")
         return
     
-    # ====================== STATUS ======================
+    # STATUS
     if text == "status":
         status_msg = f"""
-**BOT STATUS**
+BOT STATUS
 
-👑 **Admins:** {len(ADMIN_IDS)} users
-🤖 **Bots online:** {len(clients)}/{len(BOT_TOKENS)}
-📝 **Spam target:** `{SPAM_TARGET or 'Not set'}`
-📝 **Spam text:** `{SPAM_TEXT[:50]}...`
-⏱️ **Spam speed:** `{SPAM_SPEED} seconds`
-🔴 **Spam active:** {SPAM_ACTIVE}
-🎯 **Enemy target:** `{ENEMY_TARGET or 'None'}`
-🎯 **Enemy active:** {ENEMY_ACTIVE}
-📂 **Fosh count:** {len(FOSHLIST)}
-🏷️ **Tag targets:** {len(TAG_TARGETS)} user(s)
-⏱️ **Tag delay:** `{TAG_SPAM_DELAY}s`
-🔣 **Tag symbol:** `{TAG_SYMBOL}`
+Admins: {len(ADMIN_IDS)} users
+Bots online: {len(clients)}/{len(BOT_TOKENS)}
+Spam target: {SPAM_TARGET or 'Not set'}
+Spam text: {SPAM_TEXT[:50]}...
+Spam speed: {SPAM_SPEED} seconds
+Spam active: {SPAM_ACTIVE}
+Enemy target: {ENEMY_TARGET or 'None'}
+Enemy active: {ENEMY_ACTIVE}
+Fosh count: {len(FOSHLIST)}
+Tag targets: {len(TAG_TARGETS)} user(s)
+Tag delay: {TAG_SPAM_DELAY}s
+Tag symbol: {TAG_SYMBOL}
 """
         await event.reply(status_msg)
         return
     
-    # ====================== SUDO SU (add admin) ======================
+    # SUDO SU (add admin)
     if text.startswith("sudo su"):
         try:
             parts = text.split()
             if len(parts) < 3:
-                await event.reply("Usage: `sudo su <user_id>`")
+                await event.reply("Usage: sudo su <user_id>")
                 return
             try:
                 new_admin = int(parts[2].strip())
@@ -1067,18 +1065,18 @@ async def _commands_handler(event, text, client):
                 await event.reply("User is already an admin.")
                 return
             ADMIN_IDS.add(new_admin)
-            await event.reply(f"User `{new_admin}` now has root permission!")
+            await event.reply(f"User {new_admin} now has root permission")
             print(f"[BOT] New admin added: {new_admin}")
         except Exception as e:
             await event.reply(f"Failed to add admin: {str(e)[:100]}")
         return
 
-    # ====================== KILADMIN (remove admin) ======================
+    # KILADMIN (remove admin)
     if text.startswith("kiladmin"):
         try:
             parts = text.split(maxsplit=1)  
             if len(parts) < 2:
-                await event.reply("Usage: `kiladmin <user_id>`")
+                await event.reply("Usage: kiladmin <user_id>")
                 return
             rem_admin = int(parts[1].strip())
             
@@ -1089,7 +1087,7 @@ async def _commands_handler(event, text, client):
                 await event.reply("Cannot remove the last root user.")
                 return
             ADMIN_IDS.remove(rem_admin)
-            await event.reply(f"User `{rem_admin}` no longer has root permission!")
+            await event.reply(f"User {rem_admin} no longer has root permission")
             print(f"[BOT] Admin removed: {rem_admin}")
         except (ValueError, IndexError):
             await event.reply("Invalid user ID.")
@@ -1121,11 +1119,11 @@ async def main():
     global ALL_BOTS_RUNNING
     
     print("=" * 60)
-    print("[BOT] 🚀 Starting Multi-Bot System...")
-    print(f"[BOT] 👑 Admins: {ADMIN_IDS}")
-    print(f"[BOT] 🤖 Total Bots: {len(BOT_TOKENS)}")
-    print(f"[BOT] 📍 Master Bot Index: {MASTER_BOT_INDEX}")
-    print("[BOT] 📝 ALL commands run on ALL bots!")
+    print("[BOT] Starting Multi-Bot System...")
+    print(f"[BOT] Admins: {ADMIN_IDS}")
+    print(f"[BOT] Total Bots: {len(BOT_TOKENS)}")
+    print(f"[BOT] Master Bot Index: {MASTER_BOT_INDEX}")
+    print("[BOT] ALL commands run on ALL bots")
     print("=" * 60)
     
     ensure_forward_files()
@@ -1133,17 +1131,17 @@ async def main():
     bot_tasks = []
     for i, token in enumerate(BOT_TOKENS):
         if not token or token.startswith("YOUR_BOT_TOKEN"):
-            print(f"[BOT] ⚠️ Skipping bot {i+1} - Invalid token")
+            print(f"[BOT] Skipping bot {i+1} - Invalid token")
             continue
         task = asyncio.create_task(run_bot(i, token))
         bot_tasks.append(task)
         await asyncio.sleep(0.5)
     
     if not bot_tasks:
-        print("[BOT] ❌ No valid bot tokens found!")
+        print("[BOT] No valid bot tokens found")
         return
     
-    print("[BOT] ✅ ALL BOTS STARTED!")
+    print("[BOT] ALL BOTS STARTED")
     print("=" * 60)
     
     await asyncio.gather(*bot_tasks)
