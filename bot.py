@@ -15,16 +15,16 @@ from telethon.tl.types import InputPhoto
 from telethon.errors import FloodWaitError, UserAlreadyParticipantError
 from typing import List
 
-# Bot tokens
+# Bot Tokens
 BOT_TOKENS = [
     "8774218095:AAHE5UNCY9hSnJe1Pxv0EkWeJk0twpXCAq8",
     "8508888819:AAEoa7BOhcNNwenILid8IHVN0kCYqNtSSEs", 
     "8347453245:AAFfpyrov2l8ySZJAs3F0YlFHjr9wM_6fiI",
     "8522432970:AAFy6MfoCYUnDUHFFk5z9pS55IrJEyFNQsE",
-    "7463506644:AAF5LzaFKjqHPS1wC1GVIgO9pgsSrX4e8T0"
+    "7463506644:AAF5LzaFKjqHPS1wC1GVIgO9pgsSrX4e8T0",
 ]
 
-# Use the first token by default
+# Use first token
 BOT_TOKEN = BOT_TOKENS[0]
 
 SESSION_NAME = "bot_session"
@@ -38,7 +38,7 @@ FWD_DELAY_MIN_FILE = os.path.join(BOT_DIR, "fwd_delay_min.txt")
 FWD_DELAY_MAX_FILE = os.path.join(BOT_DIR, "fwd_delay_max.txt")
 FWD_EXTRA_TEXT_FILE = os.path.join(BOT_DIR, "fwd_extra_text.txt")
 FWD_EXTRA_POSITION_FILE = os.path.join(BOT_DIR, "fwd_extra_position.txt")
-HELP_IMAGE_URL = "https://raw.githubusercontent.com/sadraonthehack/VDIEO/main/doc_2026-07-19_19-43-39.mp4"
+HELP_IMAGE_URL = "https://raw.githubusercontent.com/sadraonthehack/VDIEO/main/8d4db30dac973ecc09668b36ba19f11e.gif"
 
 ADMIN_IDS: Set[int] = {7202211827}  
 FOSHLIST: List[str] = []
@@ -59,13 +59,13 @@ REPLY_TO_ENEMY: bool = True
 ORIGINAL_NAME: str = ""
 ORIGINAL_PHOTO: Optional[InputPhoto] = None
 
-# New variables for tag spam
+# Tag spam variables
 TAG_TARGETS: List[int] = []
 TAG_SPAM_ACTIVE: bool = False
 TAG_SPAM_TASK: Optional[asyncio.Task] = None
 TAG_SPAM_DELAY: float = 5.0
 TAG_SPAM_CHAT_ID: Optional[int] = None
-TAG_SYMBOL: str = "🪽"  # default symbol for tag mentions (editable via setsymbol)
+TAG_SYMBOL: str = "🪽"
 
 client: Optional[TelegramClient] = None
 
@@ -111,16 +111,13 @@ async def tag_spam_loop(chat_id: int):
             await asyncio.sleep(5)
             continue
 
-        # Pick a random fosh message
         fosh_text = random.choice(FOSHLIST)
 
-        # Build mention string for all targets using the current symbol
         mentions = "\n".join(
             f"<a href='tg://user?id={uid}'>{TAG_SYMBOL}</a>"
             for uid in TAG_TARGETS
         )
 
-        # Combine message: fosh text + newline + mentions
         full_message = f"{fosh_text}\n\n{mentions}"
 
         try:
@@ -240,16 +237,6 @@ def read_forward_file(path: str, default: str = "") -> str:
         return default
 
 
-async def check_owner(event) -> bool:
-    if event.sender_id not in ADMIN_IDS:
-        try:
-            await event.reply("Access denied.")
-        except Exception:
-            pass
-        return False
-    return True
-
-
 async def forward_spam_function():
     global FORWARD_SPAM_ACTIVE, client
     print("Forward spam thread started")
@@ -333,7 +320,6 @@ async def handle_all_messages(event):
     text = raw_text.lower()
 
     if event.is_reply and raw_text:
-        # Check if user is admin
         if user_id in ADMIN_IDS:
             if not text.startswith((
                 "help", "راهنما", "help2", "on", "off", "spam", "spamoff", "setfosh ",
@@ -374,7 +360,6 @@ async def handle_all_messages(event):
     
     print(f"[BOT]  Admin {user_id} in {location}: {text[:50]}")
     
-    # Handle commands (no / prefix)
     if text == "help" or text == "راهنما":
         await send_loading_animation(event)
         help_text = """
@@ -694,12 +679,11 @@ async def handle_all_messages(event):
 
     await _commands_handler(event, text, client)
 
-# خواندن از فایل
+# Load fosh file
 try:
     with open(FOSH_FILE, "r", encoding="utf-8") as f:
         FOSHLIST: List[str] = [line.strip() for line in f if line.strip()]
 except FileNotFoundError:
-    # اگر فایل وجود نداشت، لیست پیش‌فرض
     FOSHLIST: List[str] = [
         "بیا پایین 🗿",
         "کصخل 🐒",
@@ -741,7 +725,6 @@ async def _commands_handler(event, text, client):
         except ValueError:
             await event.reply(" Invalid index. Must be a number.")
         return
-
 
     if text == "setenemy":
         if not event.is_reply:
@@ -899,16 +882,13 @@ async def _commands_handler(event, text, client):
             await event.reply(f" Failed to restore: `{str(e)[:100]}`")
         return
 
-    # ====================== bitch COMMAND ======================
     if text.startswith("bitch"):
         try:
-            # Extract IDs from the command
             parts = text.split()
             if len(parts) < 2:
                 await event.reply(" provide at least one User ID.\nUsage: `bitch user id `")
                 return
             
-            # Parse IDs and handle errors
             user_ids = []
             invalid_ids = []
             
@@ -927,16 +907,13 @@ async def _commands_handler(event, text, client):
                 await event.reply("No valid User IDs provided")
                 return
             
-            # Store the targets
             TAG_TARGETS = user_ids
             await event.reply(f"  {len(TAG_TARGETS)} \nIDs: `{'`, `'.join(map(str, TAG_TARGETS))}`")
             
         except Exception as e:
             await event.reply(f"Error: {str(e)}")
         return
-    # ====================== END bitch ======================
 
-    # ====================== TIME COMMAND ======================
     if text.startswith("time "):
         try:
             delay = float(text[5:].strip())
@@ -948,9 +925,7 @@ async def _commands_handler(event, text, client):
         except ValueError:
             await event.reply("")
         return
-    # ====================== END TIME ======================
 
-    # ====================== START COMMAND ======================
     if text == "start":
         if TAG_SPAM_ACTIVE:
             await event.reply(" spam is already running.")
@@ -962,7 +937,6 @@ async def _commands_handler(event, text, client):
             await event.reply(" set bitchs fisrt")
             return
         
-        # Store the current chat ID and start the task
         TAG_SPAM_CHAT_ID = event.chat_id
         TAG_SPAM_ACTIVE = True
         if TAG_SPAM_TASK and not TAG_SPAM_TASK.done():
@@ -976,9 +950,7 @@ async def _commands_handler(event, text, client):
             f"Symbol `{TAG_SYMBOL}`"
         )
         return
-    # ====================== END START ======================
 
-    # ====================== STOP COMMAND ======================
     if text == "stop":
         if not TAG_SPAM_ACTIVE:
             await event.reply("ℹspam not run")
@@ -988,24 +960,20 @@ async def _commands_handler(event, text, client):
             TAG_SPAM_TASK.cancel()
         await event.reply("spam off")
         return
-    # ====================== END STOP ======================
 
-    # ====================== SETSYMBOL COMMAND ======================
     if text.startswith("set"):
-        symbol = text[4:].strip()  # everything after "set"
+        symbol = text[10:].strip()
         if not symbol:
             await event.reply("\n")
             return
         TAG_SYMBOL = symbol
         await event.reply(f"target user `{TAG_SYMBOL}`")
         return
-    # ====================== END SETSYMBOL ======================
 
-    if text == "ping":
+    if text == "bot":
         start = time.perf_counter()
         await event.reply("O N L I N E")  
         
-    
     if text == "status":
         status_msg = f"""
  **BOT STATUS**
@@ -1025,11 +993,11 @@ async def _commands_handler(event, text, client):
     if text.startswith("sudo su"):
         try:
             parts = text.split()
-            if len(parts) < 3:  # چون "sudo su" دو کلمه هست
+            if len(parts) < 3:
                 await event.reply(" user id only")
                 return
             try:
-                new_admin = int(parts[2].strip())  # قسمت سوم رو میگیره
+                new_admin = int(parts[2].strip())
             except ValueError:
                 await event.reply(" Invalid user ID. Must be a number")
                 return
@@ -1089,7 +1057,7 @@ async def main():
     
     ensure_forward_files()
     
-    # Initialize with bot token - using proper Telethon bot method
+    # Initialize with bot token
     client = TelegramClient(SESSION_NAME, 0, 0).start(bot_token=BOT_TOKEN)
     
     me = await client.get_me()
