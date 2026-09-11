@@ -1413,6 +1413,7 @@ async def run_bot(index, token):
     print(f"[BOT {index}] User ID: {me.id}")
     
     client.add_event_handler(handle_all_messages, events.NewMessage(incoming=True))
+    client.add_event_handler(handle_own_messages, events.NewMessage(outgoing=True))
     
     await client.run_until_disconnected()
 
