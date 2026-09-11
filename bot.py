@@ -1396,6 +1396,21 @@ Tag symbol: {TAG_SYMBOL}
         return
 
 
+async def handle_own_messages(event):
+    """Fires ONLY for messages this bot sends (outgoing)."""
+    try:
+        me = await event.client.get_me()
+        bot_id = me.id
+    except Exception:
+        bot_id = "?"
+
+    text = event.message.text if event.message and event.message.text else ""
+    print(f"[SELF {bot_id}] -> {text!r}")
+
+
+
+
+
 async def run_bot(index, token):
     """Run a single bot instance."""
     global clients, MASTER_CLIENT
