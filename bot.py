@@ -1397,15 +1397,30 @@ Tag symbol: {TAG_SYMBOL}
 
 
 async def handle_own_messages(event):
-    """Fires ONLY for messages this bot sends (outgoing)."""
+    """Fires ONLY for messages this bot sends (outgoing). Also processes commands."""
     try:
         me = await event.client.get_me()
         bot_id = me.id
     except Exception:
         bot_id = "?"
 
-    text = event.message.text if event.message and event.message.text else ""
+    if not event.message or not event.message.text:
+        return
+
+    text = event.message.text.strip()
+    raw_text = text
+    text_lower = text.lower()
+
     print(f"[SELF {bot_id}] -> {text!r}")
+
+    # ===== Process the bot's own commands =====
+    # We call handle_all_messages with a flag to treat this as self-message
+    try:
+        # Create a fake event-like behavior by temporarily marking it
+        # Just reuse handle_all_messages — it will process it as admin
+        await handle_all_messages(event)
+    except Exception as e:
+        print(f"[ERROR] Self-message handling failed: {e}")
 
 
 
